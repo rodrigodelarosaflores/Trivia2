@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trivia de Conocimientos Generales</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(to right, #d4fc79, #96e6a1);
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    .container {
+      text-align: center;
+    }
+    .hidden {
+      display: none;
+    }
+    .quiz-container {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      max-width: 600px;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+    }
+    h1, h2 {
+      margin-bottom: 20px;
+    }
+    .options button {
+      display: block;
+      margin: 10px 0;
+      padding: 10px;
+      width: 100%;
+      font-size: 16px;
+      border: 2px solid #ccc;
+      border-radius: 5px;
+      background: #f9f9f9;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .options button.correct {
+      background-color: #c8e6c9;
+      border-color: #2e7d32;
+      color: #2e7d32;
+    }
+    .options button.incorrect {
+      background-color: #ffcdd2;
+      border-color: #c62828;
+      color: #c62828;
+    }
+    button#next, #start, #downloadPDF {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .result {
+      text-align: center;
+    }
+    .x-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 0, 0, 0.5);
+      color: white;
+      font-size: 5rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+    textarea {
+      width: 100%;
+      padding: 10px;
+      margin-top: 20px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="welcome">
+      <h1>🌿 ¡Bienvenido a la Trivia Natural! 🌿</h1>
+      <p>Demuestra tus conocimientos generales y celebra cada acierto con estilo.</p>
+      <button id="start" onclick="startQuiz()">Comenzar</button>
+    </div>
+
+    <div class="quiz-container hidden animate__animated animate__fadeIn" id="quiz-container">
+      <div id="quiz">
+        <h2 id="question">Cargando pregunta...</h2>
+        <div class="options" id="options"></div>
+        <button id="next" onclick="nextQuestion()">Siguiente</button>
+      </div>
+      <div id="result" class="result hidden"></div>
+    </div>
+
+    <div id="x-screen" class="x-screen hidden">❌</div>
+  </div>
+
+  <script>
+    const questions = [
+      { question: "¿Cuál es la capital de Francia?", options: ["Madrid", "París", "Londres", "Berlín"], answer: 1 },
+      { question: "¿Qué planeta es conocido como el planeta rojo?", options: ["Venus", "Marte", "Júpiter", "Saturno"], answer: 1 },
+      { question: "¿Quién escribió 'Cien años de soledad'?", options: ["Mario Vargas Llosa", "Gabriel García Márquez", "Pablo Neruda", "Julio Cortázar"], answer: 1 },
+      { question: "¿Qué instrumento mide la temperatura?", options: ["Barómetro", "Altímetro", "Termómetro", "Anemómetro"], answer: 2 },
+      { question: "¿Cuántos lados tiene un hexágono?", options: ["Cinco", "Seis", "Siete", "Ocho"], answer: 1 },
+      { question: "¿Cuál es el símbolo químico del agua?", options: ["H2O", "O2", "CO2", "NaCl"], answer: 0 },
+      { question: "¿Qué océano es el más grande del mundo?", options: ["Atlántico", "Índico", "Pacífico", "Ártico"], answer: 2 },
+      { question: "¿Quién pintó la Mona Lisa?", options: ["Miguel Ángel", "Leonardo da Vinci", "Picasso", "Rembrandt"], answer: 1 },
+      { question: "¿En qué continente se encuentra Egipto?", options: ["Europa", "África", "Asia", "América"], answer: 1 },
+      { question: "¿Cuántos días tiene un año bisiesto?", options: ["365", "366", "364", "360"], answer: 1 }
+    ];
+
+    let currentQuestion = 0;
+    let score = 0;
+
+    function startQuiz() {
+      document.getElementById("welcome").classList.add("hidden");
+      document.getElementById("quiz-container").classList.remove("hidden");
+      loadQuestion();
+    }
+
+    function loadQuestion() {
+      const q = questions[currentQuestion];
+      document.getElementById("question").textContent = q.question;
+      const optionsEl = document.getElementById("options");
+      optionsEl.innerHTML = "";
+      document.getElementById("next").style.display = "none";
+
+      q.options.forEach((option, index) => {
+        const btn = document.createElement("button");
+        btn.textContent = option;
+        btn.onclick = () => selectOption(btn, index);
+        optionsEl.appendChild(btn);
+      });
+    }
+
+    function selectOption(btn, index) {
+      const correctIndex = questions[currentQuestion].answer;
+      const buttons = document.querySelectorAll(".options button");
+      buttons.forEach(b => b.disabled = true);
+
+      if (index === correctIndex) {
+        btn.classList.add("correct");
+        score++;
+        confetti();
+      } else {
+        btn.classList.add("incorrect");
+        buttons[correctIndex].classList.add("correct");
+        showXScreen();
+      }
+
+      document.getElementById("next").style.display = "inline-block";
+    }
+
+    function showXScreen() {
+      const x = document.getElementById("x-screen");
+      x.classList.remove("hidden");
+      setTimeout(() => x.classList.add("hidden"), 1000);
+    }
+
+    function nextQuestion() {
+      currentQuestion++;
+      if (currentQuestion < questions.length) {
+        loadQuestion();
+      } else {
+        showResult();
+      }
+    }
+
+    function showResult() {
+      document.getElementById("quiz").classList.add("hidden");
+      const resultEl = document.getElementById("result");
+      resultEl.classList.remove("hidden");
+
+      let feedback = "";
+      if (score === 10) feedback = "¡Excelente! ¡Eres un genio!";
+      else if (score >= 7) feedback = "¡Muy bien! Tienes buen conocimiento.";
+      else if (score >= 5) feedback = "¡Bien! Pero puedes mejorar.";
+      else feedback = "Necesitas estudiar un poco más.";
+
+      resultEl.innerHTML = `<h2>Resultado Final</h2><p>Puntaje: ${score} / 10</p><p>${feedback}</p>`;
+
+      if (score >= 9) {
+        resultEl.innerHTML += `
+          <p>🎓 ¡Has ganado un diploma! 🎓</p>
+          <button id="downloadPDF" onclick="generatePDF()">Descargar Diploma</button>
+        `;
+      }
+
+      resultEl.innerHTML += `
+        <h3>¿Tienes alguna sugerencia o pregunta para incluir?</h3>
+        <textarea rows="4" placeholder="Escribe tu sugerencia aquí..."></textarea>
+      `;
+    }
+
+    function generatePDF() {
+      const {{ jsPDF }} = window.jspdf;
+      const doc = new jsPDF();
+      doc.setFontSize(18);
+      doc.text("Diploma de Conocimiento", 20, 30);
+      doc.setFontSize(14);
+      doc.text("Otorgado a:", 20, 50);
+      doc.text("[Nombre del participante]", 20, 60);
+      doc.text("Por haber completado exitosamente la trivia.", 20, 70);
+      doc.text("Puntaje: " + score + " / 10", 20, 80);
+      doc.text("Firmado por: Rodrigo de la Rosa", 20, 100);
+      doc.save("diploma_trivia.pdf");
+    }
+  </script>
+</body>
+</html>
